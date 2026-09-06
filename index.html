@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <!-- viewport-fit=cover: 노치/홈 인디케이터 영역까지 앱 배경을 확장 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <title>머니북 - 나의 가계부</title>
+  <meta name="description" content="오프라인에서도 동작하는 개인 가계부" />
+
+  <!-- PWA 핵심 연결 -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#18846c" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0f1720" media="(prefers-color-scheme: dark)" />
+
+  <!-- iOS 단독 실행(주소창 제거) 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="머니북" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+
+  <style>
+    :root {
+      --brand: #18846c;
+      --brand-dark: #126956;
+      --accent: #ffcd60;
+      --income: #2f9e6d;
+      --expense: #e05c5c;
+
+      --bg: #f4f6f5;
+      --surface: #ffffff;
+      --surface-2: #eef1f0;
+      --text: #16211d;
+      --text-dim: #6b7a75;
+      --line: #e2e7e5;
+
+      --nav-h: 60px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1720;
+        --surface: #17222c;
+        --surface-2: #1e2b36;
+        --text: #eaf1ee;
+        --text-dim: #92a3ad;
+        --line: #26333e;
+      }
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overscroll-behavior-y: none;   /* 당겨서 새로고침 방지 (앱 감성) */
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+                   "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;    /* 더블탭 확대 방지 */
+    }
+
+    /* 입력 요소는 선택 가능해야 함 */
+    input, textarea, select { -webkit-user-select: text; user-select: text; }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+    }
+
+    /* ===== 헤더 ===== */
+    header.app-bar {
+      background: linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 100%);
+      color: #fff;
+      padding: calc(var(--safe-top) + 14px) 20px 26px;
+      border-radius: 0 0 22px 22px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .app-bar .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .app-title { font-size: 15px; font-weight: 600; opacity: .9; margin: 0; letter-spacing: -.2px; }
+
+    .icon-btn {
+      width: 36px; height: 36px;
+      border: 0; border-radius: 12px;
+      background: rgba(255,255,255,.16);
+      color: #fff; font-size: 17px;
+      display: grid; place-items: center;
+      cursor: pointer;
+    }
+    .icon-btn:active { transform: scale(.94); }
+
+    .balance-label { margin: 18px 0 4px; font-size: 12px; opacity: .8; }
+    .balance-amount { font-size: 32px; font-weight: 700; letter-spacing: -1px; }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .summary div {
+      background: rgba(255,255,255,.14);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    .summary span { display: block; font-size: 11px; opacity: .85; }
+    .summary strong { font-size: 16px; font-weight: 600; letter-spacing: -.3px; }
+
+    /* ===== 본문 ===== */
+    main {
+      flex: 1;
+      padding: 18px 16px calc(var(--nav-h) + var(--safe-bottom) + 88px);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin: 4px 4px 10px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 44px 20px;
+      color: var(--text-dim);
+    }
+    .empty .emoji { font-size: 40px; display: block; margin-bottom: 12px; }
+    .empty p { margin: 0 0 6px; font-size: 15px; font-weight: 600; color: var(--text); }
+    .empty small { font-size: 13px; line-height: 1.6; }
+
+    /* ===== 플로팅 입력 버튼 ===== */
+    .fab {
+      position: fixed;
+      right: 18px;
+      bottom: calc(var(--nav-h) + var(--safe-bottom) + 18px);
+      width: 58px; height: 58px;
+      border: 0; border-radius: 50%;
+      background: var(--brand);
+      color: #fff; font-size: 28px; line-height: 1;
+      box-shadow: 0 8px 22px rgba(24,132,108,.42);
+      display: grid; place-items: center;
+      cursor: pointer;
+      z-index: 20;
+      transition: transform .12s ease;
+    }
+    .fab:active { transform: scale(.9); }
+
+    /* ===== 하단 탭 ===== */
+    nav.tab-bar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      height: calc(var(--nav-h) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: color-mix(in srgb, var(--surface) 88%, transparent);
+      backdrop-filter: saturate(180%) blur(14px);
+      -webkit-backdrop-filter: saturate(180%) blur(14px);
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      z-index: 20;
+    }
+
+    nav.tab-bar button {
+      border: 0; background: none;
+      color: var(--text-dim);
+      font-size: 10px; font-weight: 500;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    nav.tab-bar button i { font-style: normal; font-size: 19px; }
+    nav.tab-bar button[aria-current="page"] { color: var(--brand); }
+    nav.tab-bar button:active i { transform: scale(.88); }
+
+    /* ===== 설치 안내 배너 ===== */
+    .install-bar {
+      position: fixed;
+      left: 12px; right: 12px;
+      bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+      padding: 12px 14px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      z-index: 30;
+    }
+    .install-bar.show { display: flex; }
+    .install-bar img { width: 34px; height: 34px; border-radius: 9px; }
+    .install-bar .txt { flex: 1; font-size: 12px; line-height: 1.45; color: var(--text-dim); }
+    .install-bar .txt b { display: block; font-size: 13px; color: var(--text); }
+    .install-bar button {
+      border: 0; border-radius: 10px;
+      background: var(--brand); color: #fff;
+      padding: 8px 13px; font-size: 12px; font-weight: 600;
+      font-family: inherit; cursor: pointer;
+    }
+    .install-bar .close {
+      background: none; color: var(--text-dim);
+      padding: 6px; font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="app-bar">
+      <div class="row">
+        <p class="app-title" id="periodLabel">2026년 9월</p>
+        <button class="icon-btn" type="button" aria-label="설정">⚙</button>
+      </div>
+
+      <p class="balance-label">이번 달 남은 금액</p>
+      <div class="balance-amount" id="balanceAmount">0원</div>
+
+      <div class="summary">
+        <div>
+          <span>수입</span>
+          <strong id="incomeAmount">0원</strong>
+        </div>
+        <div>
+          <span>지출</span>
+          <strong id="expenseAmount">0원</strong>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <p class="section-title">최근 내역</p>
+      <section class="card" id="listArea">
+        <div class="empty">
+          <span class="emoji">🧾</span>
+          <p>아직 기록이 없어요</p>
+          <small>오른쪽 아래 + 버튼을 눌러<br />첫 수입·지출을 기록해 보세요.</small>
+        </div>
+      </section>
+    </main>
+
+    <button class="fab" id="fabAdd" type="button" aria-label="내역 추가">+</button>
+
+    <nav class="tab-bar">
+      <button type="button" aria-current="page" data-tab="home"><i>🏠</i>홈</button>
+      <button type="button" data-tab="calendar"><i>📅</i>달력</button>
+      <button type="button" data-tab="stats"><i>📊</i>통계</button>
+      <button type="button" data-tab="settings"><i>⚙️</i>설정</button>
+    </nav>
+  </div>
+
+  <div class="install-bar" id="installBar">
+    <img src="./icons/icon-192.png" alt="" />
+    <div class="txt">
+      <b>홈 화면에 설치하기</b>
+      앱처럼 주소창 없이 실행됩니다.
+    </div>
+    <button type="button" id="installBtn">설치</button>
+    <button type="button" class="close" id="installClose" aria-label="닫기">✕</button>
+  </div>
+
+  <script>
+    /* ---------------------------------------------------------
+       1) 서비스 워커 등록 (오프라인 구동 / 설치 조건 충족)
+       --------------------------------------------------------- */
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+          .then(function (reg) { console.log('[PWA] 서비스 워커 등록 완료:', reg.scope); })
+          .catch(function (err) { console.warn('[PWA] 서비스 워커 등록 실패:', err); });
+      });
+    }
+
+    /* ---------------------------------------------------------
+       2) 단독(standalone) 실행 여부 감지
+       --------------------------------------------------------- */
+    var isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    document.documentElement.dataset.standalone = isStandalone ? 'yes' : 'no';
+
+    /* ---------------------------------------------------------
+       3) 설치 배너 (Android / Desktop Chrome)
+       --------------------------------------------------------- */
+    var deferredPrompt = null;
+    var installBar = document.getElementById('installBar');
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!isStandalone && sessionStorage.getItem('installDismissed') !== '1') {
+        installBar.classList.add('show');
+      }
+    });
+
+    document.getElementById('installBtn').addEventListener('click', async function () {
+      installBar.classList.remove('show');
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+    });
+
+    document.getElementById('installClose').addEventListener('click', function () {
+      installBar.classList.remove('show');
+      try { sessionStorage.setItem('installDismissed', '1'); } catch (e) {}
+    });
+
+    window.addEventListener('appinstalled', function () {
+      installBar.classList.remove('show');
+      deferredPrompt = null;
+    });
+
+    /* ---------------------------------------------------------
+       4) 헤더 기간 라벨 + 하단 탭 (2단계에서 화면 전환 연결)
+       --------------------------------------------------------- */
+    var now = new Date();
+    document.getElementById('periodLabel').textContent =
+      now.getFullYear() + '년 ' + (now.getMonth() + 1) + '월';
+
+    document.querySelectorAll('nav.tab-bar button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('nav.tab-bar button')
+          .forEach(function (b) { b.removeAttribute('aria-current'); });
+        btn.setAttribute('aria-current', 'page');
+      });
+    });
+
+    document.getElementById('fabAdd').addEventListener('click', function () {
+      alert('2단계에서 입력 시트를 연결합니다.');
+    });
+
+    /* ---------------------------------------------------------
+       5) 앱 감성 보정: 확대 제스처 / 스크롤 바운스 억제
+       --------------------------------------------------------- */
+    document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+    document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { passive: false });
+  </script>
+</body>
+</html>
