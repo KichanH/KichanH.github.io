@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+  <title>머니북 - 나의 가계부</title>
+  <meta name="description" content="오프라인에서도 동작하는 개인 가계부. 고정지출까지 한눈에." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#18846c" />
+
+  <!-- iOS 단독 실행 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="머니북" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="app" aria-live="polite"></main>
+  <div id="sheet"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <p style="padding: 24px; font-family: system-ui, sans-serif">
+      머니북은 자바스크립트로 동작합니다. 브라우저 설정에서 자바스크립트를 켜 주세요.
+    </p>
+  </noscript>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
